@@ -602,13 +602,13 @@ static int create_connection(PROV_TRANSPORT_HTTP_INFO* http_info)
     return result;
 }
 
-PROV_DEVICE_TRANSPORT_HANDLE prov_transport_http_create(const char* uri, TRANSPORT_HSM_TYPE type, const char* scope_id, const char* registration_id, const char* api_version)
+PROV_DEVICE_TRANSPORT_HANDLE prov_transport_http_create(const char* uri, TRANSPORT_HSM_TYPE type, const char* scope_id, const char* api_version)
 {
     PROV_TRANSPORT_HTTP_INFO* result;
-    if (uri == NULL || scope_id == NULL || registration_id == NULL || api_version == NULL)
+    if (uri == NULL || scope_id == NULL || api_version == NULL)
     {
         /* Codes_PROV_TRANSPORT_HTTP_CLIENT_07_001: [ If uri, scope_id, registration_id or api_version are NULL prov_transport_http_create shall return NULL. ] */
-        LogError("Invalid parameter specified uri: %p, scope_id: %p, registration_id: %p, api_version: %p", uri, scope_id, registration_id, api_version);
+        LogError("Invalid parameter specified uri: %p, scope_id: %p, api_version: %p", uri, scope_id, api_version);
         result = NULL;
     }
     else
@@ -628,13 +628,6 @@ PROV_DEVICE_TRANSPORT_HANDLE prov_transport_http_create(const char* uri, TRANSPO
                 /* Codes_PROV_TRANSPORT_HTTP_CLIENT_07_003: [ If any error is encountered prov_transport_http_create shall return NULL. ] */
                 LogError("Failure allocating hostname");
                 free(result);
-                result = NULL;
-            }
-            else if (mallocAndStrcpy_s(&result->registration_id, registration_id) != 0)
-            {
-                /* Codes_PROV_TRANSPORT_HTTP_CLIENT_07_003: [ If any error is encountered prov_transport_http_create shall return NULL. ] */
-                LogError("failure constructing registration Id");
-                free_allocated_data(result);
                 result = NULL;
             }
             else if (mallocAndStrcpy_s(&result->api_version, api_version) != 0)
@@ -768,14 +761,14 @@ int prov_transport_http_close(PROV_DEVICE_TRANSPORT_HANDLE handle)
     return result;
 }
 
-int prov_transport_http_register_device(PROV_DEVICE_TRANSPORT_HANDLE handle, PROV_TRANSPORT_CHALLENGE_CALLBACK reg_challenge_cb, void* user_ctx, PROV_TRANSPORT_JSON_PARSE json_parse_cb, void* json_ctx)
+int prov_transport_http_register_device(PROV_DEVICE_TRANSPORT_HANDLE handle, const char* registration_id, PROV_TRANSPORT_CHALLENGE_CALLBACK reg_challenge_cb, void* user_ctx, PROV_TRANSPORT_JSON_PARSE json_parse_cb, void* json_ctx)
 {
     int result;
     PROV_TRANSPORT_HTTP_INFO* http_info = (PROV_TRANSPORT_HTTP_INFO*)handle;
-    if (http_info == NULL || json_parse_cb == NULL)
+    if (http_info == NULL || json_parse_cb == NULL || registration_id == NULL)
     {
         /* Codes_PROV_TRANSPORT_HTTP_CLIENT_07_017: [ If the argument handle or json_data is NULL, prov_transport_http_register_device shall return a non-zero value. ] */
-        LogError("Invalid parameter specified handle: %p, json_parse_cb: %p", handle, json_parse_cb);
+        LogError("Invalid parameter specified handle: %p, json_parse_cb: %p, registration_id: %p", handle, json_parse_cb, registration_id);
         result = __FAILURE__;
     }
     else if (http_info->hsm_type == TRANSPORT_HSM_TYPE_TPM && reg_challenge_cb == NULL)
@@ -786,6 +779,12 @@ int prov_transport_http_register_device(PROV_DEVICE_TRANSPORT_HANDLE handle, PRO
     else if (http_info->transport_state == TRANSPORT_CLIENT_STATE_ERROR)
     {
         LogError("Provisioning is in an error state, close the connection and try again.");
+        result = __FAILURE__;
+    }
+    else if (mallocAndStrcpy_s(&http_info->registration_id, registration_id) != 0)
+    {
+        /* Codes_PROV_TRANSPORT_AMQP_COMMON_07_002: [ If any error is encountered, prov_transport_common_amqp_create shall return NULL. ] */
+        LogError("failure constructing registration Id");
         result = __FAILURE__;
     }
     else

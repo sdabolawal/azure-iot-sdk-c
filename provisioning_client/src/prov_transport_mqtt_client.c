@@ -64,10 +64,10 @@ static XIO_HANDLE mqtt_transport_io(const char* fqdn, const HTTP_PROXY_OPTIONS* 
     return result;
 }
 
-PROV_DEVICE_TRANSPORT_HANDLE prov_transport_mqtt_create(const char* uri, TRANSPORT_HSM_TYPE type, const char* scope_id, const char* registration_id, const char* api_version)
+PROV_DEVICE_TRANSPORT_HANDLE prov_transport_mqtt_create(const char* uri, TRANSPORT_HSM_TYPE type, const char* scope_id, const char* api_version)
 {
     /* Codes_PROV_TRANSPORT_MQTT_CLIENT_07_001: [ prov_transport_mqtt_create shall call the prov_transport_common_mqtt_create function with mqtt_transport_io transport IO estabishment. ] */
-    return prov_transport_common_mqtt_create(uri, type, scope_id, registration_id, api_version, mqtt_transport_io);
+    return prov_transport_common_mqtt_create(uri, type, scope_id, api_version, mqtt_transport_io);
 }
 
 void prov_transport_mqtt_destroy(PROV_DEVICE_TRANSPORT_HANDLE handle)
@@ -88,10 +88,10 @@ int prov_transport_mqtt_close(PROV_DEVICE_TRANSPORT_HANDLE handle)
     return prov_transport_common_mqtt_close(handle);
 }
 
-int prov_transport_mqtt_register_device(PROV_DEVICE_TRANSPORT_HANDLE handle, PROV_TRANSPORT_CHALLENGE_CALLBACK reg_challenge_cb, void* user_ctx, PROV_TRANSPORT_JSON_PARSE json_parse_cb, void* json_ctx)
+int prov_transport_mqtt_register_device(PROV_DEVICE_TRANSPORT_HANDLE handle, const char* registration_id, PROV_TRANSPORT_CHALLENGE_CALLBACK reg_challenge_cb, void* user_ctx, PROV_TRANSPORT_JSON_PARSE json_parse_cb, void* json_ctx)
 {
     /* Codes_PROV_TRANSPORT_MQTT_CLIENT_07_005: [ prov_transport_mqtt_register_device shall invoke the prov_transport_common_mqtt_register_device method ] */
-    return prov_transport_common_mqtt_register_device(handle, reg_challenge_cb, user_ctx, json_parse_cb, json_ctx);
+    return prov_transport_common_mqtt_register_device(handle, registration_id, reg_challenge_cb, user_ctx, json_parse_cb, json_ctx);
 }
 
 int prov_transport_mqtt_get_operation_status(PROV_DEVICE_TRANSPORT_HANDLE handle)

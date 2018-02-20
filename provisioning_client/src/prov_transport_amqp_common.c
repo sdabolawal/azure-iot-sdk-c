@@ -855,13 +855,13 @@ void cleanup_amqp_data(PROV_TRANSPORT_AMQP_INFO* amqp_info)
     free(amqp_info);
 }
 
-PROV_DEVICE_TRANSPORT_HANDLE prov_transport_common_amqp_create(const char* uri, TRANSPORT_HSM_TYPE type, const char* scope_id, const char* registration_id, const char* api_version, PROV_AMQP_TRANSPORT_IO transport_io)
+PROV_DEVICE_TRANSPORT_HANDLE prov_transport_common_amqp_create(const char* uri, TRANSPORT_HSM_TYPE type, const char* scope_id, const char* api_version, PROV_AMQP_TRANSPORT_IO transport_io)
 {
     PROV_TRANSPORT_AMQP_INFO* result;
-    if (uri == NULL || scope_id == NULL || registration_id == NULL || api_version == NULL || transport_io == NULL)
+    if (uri == NULL || scope_id == NULL || api_version == NULL || transport_io == NULL)
     {
-        /* Codes_PROV_TRANSPORT_AMQP_COMMON_07_001: [ If uri, scope_id, registration_id, api_version, or transport_io is NULL, prov_transport_common_amqp_create shall return NULL. ] */
-        LogError("Invalid parameter specified uri: %p, scope_id: %p, registration_id: %p, api_version: %p, transport_io: %p", uri, scope_id, registration_id, api_version, transport_io);
+        /* Codes_PROV_TRANSPORT_AMQP_COMMON_07_001: [ If uri, scope_id, api_version, or transport_io is NULL, prov_transport_common_amqp_create shall return NULL. ] */
+        LogError("Invalid parameter specified uri: %p, scope_id: %p, api_version: %p, transport_io: %p", uri, scope_id, api_version, transport_io);
         result = NULL;
     }
     else
@@ -881,13 +881,6 @@ PROV_DEVICE_TRANSPORT_HANDLE prov_transport_common_amqp_create(const char* uri, 
                 /* Codes_PROV_TRANSPORT_AMQP_COMMON_07_002: [ If any error is encountered, prov_transport_common_amqp_create shall return NULL. ] */
                 LogError("Failure allocating hostname");
                 free(result);
-                result = NULL;
-            }
-            else if (mallocAndStrcpy_s(&result->registration_id, registration_id) != 0)
-            {
-                /* Codes_PROV_TRANSPORT_AMQP_COMMON_07_002: [ If any error is encountered, prov_transport_common_amqp_create shall return NULL. ] */
-                LogError("failure constructing registration Id");
-                cleanup_amqp_data(result);
                 result = NULL;
             }
             else if (mallocAndStrcpy_s(&result->api_version, api_version) != 0)
@@ -1025,14 +1018,14 @@ int prov_transport_common_amqp_close(PROV_DEVICE_TRANSPORT_HANDLE handle)
     return result;
 }
 
-int prov_transport_common_amqp_register_device(PROV_DEVICE_TRANSPORT_HANDLE handle, PROV_TRANSPORT_CHALLENGE_CALLBACK reg_challenge_cb, void* user_ctx, PROV_TRANSPORT_JSON_PARSE json_parse_cb, void* json_ctx)
+int prov_transport_common_amqp_register_device(PROV_DEVICE_TRANSPORT_HANDLE handle, const char* registration_id, PROV_TRANSPORT_CHALLENGE_CALLBACK reg_challenge_cb, void* user_ctx, PROV_TRANSPORT_JSON_PARSE json_parse_cb, void* json_ctx)
 {
     int result;
     PROV_TRANSPORT_AMQP_INFO* amqp_info = (PROV_TRANSPORT_AMQP_INFO*)handle;
-    if (amqp_info == NULL || json_parse_cb == NULL)
+    if (amqp_info == NULL || json_parse_cb == NULL || registration_id == NULL)
     {
         /* Codes_PROV_TRANSPORT_AMQP_COMMON_07_014: [ If handle is NULL, prov_transport_common_amqp_register_device shall return a non-zero value. ] */
-        LogError("Invalid parameter specified handle: %p, json_parse_cb: %p", handle, json_parse_cb);
+        LogError("Invalid parameter specified handle: %p, json_parse_cb: %p", handle, json_parse_cb, registration_id);
         result = __FAILURE__;
     }
     else if (amqp_info->hsm_type == TRANSPORT_HSM_TYPE_TPM && reg_challenge_cb == NULL)
@@ -1051,6 +1044,12 @@ int prov_transport_common_amqp_register_device(PROV_DEVICE_TRANSPORT_HANDLE hand
     {
         /* Codes_PROV_TRANSPORT_AMQP_COMMON_07_016: [ If the transport_state is set to TRANSPORT_CLIENT_STATE_ERROR shall, prov_transport_common_amqp_register_device shall return a non-zero value. ] */
         LogError("Provisioning is in an error state, close the connection and try again.");
+        result = __FAILURE__;
+    }
+    else if (mallocAndStrcpy_s(&amqp_info->registration_id, registration_id) != 0)
+    {
+        /* Codes_PROV_TRANSPORT_AMQP_COMMON_07_002: [ If any error is encountered, prov_transport_common_amqp_create shall return NULL. ] */
+        LogError("failure constructing registration Id");
         result = __FAILURE__;
     }
     else

@@ -23,7 +23,6 @@
 #include "azure_prov_client/prov_client_const.h"
 
 static const char* OPTION_LOG_TRACE = "logtrace";
-static const char* PROV_REGISTRATION_ID = "registration_id";
 
 static const char* JSON_NODE_STATUS = "status";
 static const char* JSON_NODE_REG_STATUS = "registrationState";
@@ -85,6 +84,7 @@ typedef struct PROV_INSTANCE_INFO_TAG
     tickcounter_ms_t timeout_value;
 
     char* registration_id;
+    bool user_supplied_reg_id;
 
     PROV_AUTH_HANDLE prov_auth_handle;
 
@@ -562,14 +562,6 @@ PROV_DEVICE_LL_HANDLE Prov_Device_LL_Create(const char* uri, const char* id_scop
                 destroy_instance(result);
                 result = NULL;
             }
-            /* Codes_SRS_PROV_CLIENT_07_035: [ Prov_Device_LL_Create shall store the registration_id from the security module. ] */
-            else if ((result->registration_id = prov_auth_get_registration_id(result->prov_auth_handle)) == NULL)
-            {
-                /* Codes_SRS_PROV_CLIENT_07_003: [ If any error is encountered, Prov_Device_LL_CreateFromUri shall return NULL. ] */
-                LogError("failure: Unable to retrieve registration Id from device auth.");
-                destroy_instance(result);
-                result = NULL;
-            }
             else if ((result->tick_counter = tickcounter_create()) == NULL)
             {
                 LogError("failure: allocating tickcounter");
@@ -588,7 +580,7 @@ PROV_DEVICE_LL_HANDLE Prov_Device_LL_Create(const char* uri, const char* id_scop
                     hsm_type = TRANSPORT_HSM_TYPE_X509;
                 }
 
-                if ((result->transport_handle = result->prov_transport_protocol->prov_transport_create(uri, hsm_type, result->scope_id, result->registration_id, PROV_API_VERSION)) == NULL)
+                if ((result->transport_handle = result->prov_transport_protocol->prov_transport_create(uri, hsm_type, result->scope_id, PROV_API_VERSION)) == NULL)
                 {
                     /* Codes_SRS_PROV_CLIENT_07_003: [ If any error is encountered, Prov_Device_LL_CreateFromUri shall return NULL. ] */
                     LogError("failed calling into transport create");
@@ -615,11 +607,19 @@ void Prov_Device_LL_Destroy(PROV_DEVICE_LL_HANDLE handle)
 PROV_DEVICE_RESULT Prov_Device_LL_Register_Device(PROV_DEVICE_LL_HANDLE handle, PROV_DEVICE_CLIENT_REGISTER_DEVICE_CALLBACK register_callback, void* user_context, PROV_DEVICE_CLIENT_REGISTER_STATUS_CALLBACK reg_status_cb, void* status_ctx)
 {
     PROV_DEVICE_RESULT result;
+
     /* Codes_SRS_PROV_CLIENT_07_007: [ If handle or register_callback is NULL, Prov_Device_LL_Register_Device shall return PROV_CLIENT_INVALID_ARG. ] */
     if (handle == NULL || register_callback == NULL)
     {
         LogError("Invalid parameter specified handle: %p register_callback: %p", handle, register_callback);
         result = PROV_DEVICE_RESULT_INVALID_ARG;
+    }
+    /* Codes_SRS_PROV_CLIENT_07_035: [ Prov_Device_LL_Create shall store the registration_id from the security module. ] */
+    else if (handle->registration_id == NULL && (handle->registration_id = prov_auth_get_registration_id(handle->prov_auth_handle)) == NULL)
+    {
+        /* Codes_SRS_PROV_CLIENT_07_003: [ If any error is encountered, Prov_Device_LL_CreateFromUri shall return NULL. ] */
+        LogError("failure: Unable to retrieve registration Id from device auth.");
+        result = PROV_DEVICE_RESULT_ERROR;
     }
     else
     {
@@ -629,6 +629,11 @@ PROV_DEVICE_RESULT Prov_Device_LL_Register_Device(PROV_DEVICE_LL_HANDLE handle, 
         if (handle->prov_state != CLIENT_STATE_READY)
         {
             LogError("state is invalid");
+            if (!handle->user_supplied_reg_id)
+            {
+                free(handle->registration_id);
+                handle->registration_id = NULL;
+            }
             result = PROV_DEVICE_RESULT_ERROR;
         }
         else
@@ -638,11 +643,21 @@ PROV_DEVICE_RESULT Prov_Device_LL_Register_Device(PROV_DEVICE_LL_HANDLE handle, 
                 if ((ek_value = prov_auth_get_endorsement_key(handle->prov_auth_handle)) == NULL)
                 {
                     LogError("Could not get endorsement key from tpm");
+                    if (!handle->user_supplied_reg_id)
+                    {
+                        free(handle->registration_id);
+                        handle->registration_id = NULL;
+                    }
                     result = PROV_DEVICE_RESULT_ERROR;
                 }
                 else if ((srk_value = prov_auth_get_storage_key(handle->prov_auth_handle)) == NULL)
                 {
                     LogError("Could not get storage root key from tpm");
+                    if (!handle->user_supplied_reg_id)
+                    {
+                        free(handle->registration_id);
+                        handle->registration_id = NULL;
+                    }
                     result = PROV_DEVICE_RESULT_ERROR;
                     BUFFER_delete(ek_value);
                 }
@@ -658,11 +673,21 @@ PROV_DEVICE_RESULT Prov_Device_LL_Register_Device(PROV_DEVICE_LL_HANDLE handle, 
                 if ((x509_cert = prov_auth_get_certificate(handle->prov_auth_handle)) == NULL)
                 {
                     LogError("Could not get the x509 certificate");
+                    if (!handle->user_supplied_reg_id)
+                    {
+                        free(handle->registration_id);
+                        handle->registration_id = NULL;
+                    }
                     result = PROV_DEVICE_RESULT_ERROR;
                 }
                 else if ((x509_private_key = prov_auth_get_alias_key(handle->prov_auth_handle)) == NULL)
                 {
                     LogError("Could not get the x509 alias key");
+                    if (!handle->user_supplied_reg_id)
+                    {
+                        free(handle->registration_id);
+                        handle->registration_id = NULL;
+                    }
                     free(x509_cert);
                     result = PROV_DEVICE_RESULT_ERROR;
                 }
@@ -671,6 +696,11 @@ PROV_DEVICE_RESULT Prov_Device_LL_Register_Device(PROV_DEVICE_LL_HANDLE handle, 
                     if (handle->prov_transport_protocol->prov_transport_x509_cert(handle->transport_handle, x509_cert, x509_private_key) != 0)
                     {
                         LogError("unable to set the x509 certificate information on transport");
+                        if (!handle->user_supplied_reg_id)
+                        {
+                            free(handle->registration_id);
+                            handle->registration_id = NULL;
+                        }
                         result = PROV_DEVICE_RESULT_ERROR;
                     }
                     else
@@ -694,6 +724,11 @@ PROV_DEVICE_RESULT Prov_Device_LL_Register_Device(PROV_DEVICE_LL_HANDLE handle, 
             if (handle->prov_transport_protocol->prov_transport_open(handle->transport_handle, ek_value, srk_value, on_transport_registration_data, handle, on_transport_status, handle) != 0)
             {
                 LogError("Failure establishing  connection");
+                if (!handle->user_supplied_reg_id)
+                {
+                    free(handle->registration_id);
+                    handle->registration_id = NULL;
+                }
                 handle->register_callback = NULL;
                 handle->user_context = NULL;
 
@@ -729,7 +764,7 @@ void Prov_Device_LL_DoWork(PROV_DEVICE_LL_HANDLE handle)
             {
                 case CLIENT_STATE_REGISTER_SEND:
                     /* Codes_SRS_PROV_CLIENT_07_013: [ CLIENT_STATE_REGISTER_SEND which shall construct an initial call to the service with endorsement information ] */
-                    if (prov_info->prov_transport_protocol->prov_transport_register(prov_info->transport_handle, prov_transport_challenge_callback, prov_info, prov_transport_process_json_reply, prov_info) != 0)
+                    if (prov_info->prov_transport_protocol->prov_transport_register(prov_info->transport_handle, prov_info->registration_id, prov_transport_challenge_callback, prov_info, prov_transport_process_json_reply, prov_info) != 0)
                     {
                         LogError("Failure registering device");
                         prov_info->error_reason = PROV_DEVICE_RESULT_PARSING;
@@ -889,6 +924,7 @@ PROV_DEVICE_RESULT Prov_Device_LL_SetOption(PROV_DEVICE_LL_HANDLE handle, const 
                 }
                 else
                 {
+                    handle->user_supplied_reg_id = true;
                     result = PROV_DEVICE_RESULT_OK;
                 }
             }
