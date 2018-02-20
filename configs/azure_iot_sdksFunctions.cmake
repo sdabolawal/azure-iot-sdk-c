@@ -125,3 +125,12 @@ function(add_sfctest_directory test_directory)
         add_subdirectory(${test_directory})
     endif()
 endfunction()
+
+# XCode warns about unused varaibles and unused static functions,
+# both of which are produced by serializer
+function(usePermissiveRulesForSamples)
+    if(XCODE)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-variable  -Wno-unused-function" PARENT_SCOPE)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-variable  -Wno-unused-function" PARENT_SCOPE)
+    endif()
+endfunction()

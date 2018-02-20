@@ -4,6 +4,7 @@
 #this is CMakeLists for iothub_test
 
 compileAsC99()
+usePermissiveRulesForSamples()
 
 set(iothub_test_c_files
 ./src/iothubtest.c

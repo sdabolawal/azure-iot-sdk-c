@@ -3,6 +3,7 @@
 
 #this is CMakeLists.txt for serializer samples. There's nothing here, except redirections to 
 #individual samples
+usePermissiveRulesForSamples()
 
 function(add_sample_directory whatIsBuilding)
    add_subdirectory(${whatIsBuilding})
