@@ -462,19 +462,20 @@ static int create_message_annotations_to_encode(IOTHUB_MESSAGE_HANDLE messageHan
         else
         {
             char* diagContextBuffer = NULL;
+            size_t diagContextBufferSize = strlen(AMQP_DIAGNOSTIC_CREATION_TIME_UTC_KEY) + 1
+                                         + strlen(diagnosticData->diagnosticCreationTimeUtc) + 1;
 
             if (add_map_item(message_annotations_map, AMQP_DIAGNOSTIC_ID_KEY, diagnosticData->diagnosticId) != RESULT_OK)
             {
                 LogError("Failed adding diagnostic id");
                 result = __FAILURE__;
             }
-            else if ((diagContextBuffer = (char*)malloc(strlen(AMQP_DIAGNOSTIC_CREATION_TIME_UTC_KEY) + 1
-                + strlen(diagnosticData->diagnosticCreationTimeUtc) + 1)) == NULL)
+            else if ((diagContextBuffer = (char*)malloc(diagContextBufferSize)) == NULL)
             {
                 LogError("Failed malloc for diagnostic context");
                 result = __FAILURE__;
             }
-            else if (sprintf(diagContextBuffer, "%s=%s", AMQP_DIAGNOSTIC_CREATION_TIME_UTC_KEY, diagnosticData->diagnosticCreationTimeUtc) < 0)
+            else if (sprintf_s(diagContextBuffer, diagContextBufferSize, "%s=%s", AMQP_DIAGNOSTIC_CREATION_TIME_UTC_KEY, diagnosticData->diagnosticCreationTimeUtc) < 0)
             {
                 LogError("Failed sprintf diagnostic context");
                 result = __FAILURE__;
@@ -708,7 +709,7 @@ static int readMessageIdFromuAQMPMessage(IOTHUB_MESSAGE_HANDLE iothub_message_ha
                     LogError("Failed to get value of uAMQP message 'message-id' property (ulong)");
                     string_value = NULL;
                 }
-                else if (sprintf(string_buffer, "%" PRIu64, ulong_value) < 0)
+                else if (sprintf_s(string_buffer, MESSAGE_ID_MAX_SIZE, "%" PRIu64, ulong_value) < 0)
                 {
                     LogError("Failed converting 'message-id' (ulong) to string");
                     string_value = NULL;
@@ -829,7 +830,7 @@ static int readCorrelationIdFromuAQMPMessage(IOTHUB_MESSAGE_HANDLE iothub_messag
                     string_value = NULL;
                     result = __FAILURE__;
                 }
-                else if (sprintf(string_buffer, "%" PRIu64, ulong_value) < 0)
+                else if (sprintf_s(string_buffer, MESSAGE_ID_MAX_SIZE, "%" PRIu64, ulong_value) < 0)
                 {
                     LogError("Failed converting 'correlation-id' (ulong) to string");
                     string_value = NULL;

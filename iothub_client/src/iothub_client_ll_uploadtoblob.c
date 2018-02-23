@@ -22,7 +22,7 @@
 #include "iothub_client_private.h"
 #include "iothub_client_version.h"
 #include "iothub_transport_ll.h"
-#include "parson.h"
+#include "JsonHelper.h"
 #include "iothub_client_ll_uploadtoblob.h"
 #include "blob.h"
 
@@ -445,6 +445,46 @@ static int IoTHubClient_LL_UploadToBlob_step1and2(IOTHUB_CLIENT_LL_UPLOADTOBLOB_
                                     }
                                     else
                                     {
+                                        size_t sasUriSize = 0;
+                                        size_t corelationIdSize = 0;
+                                        if (INSUFFICIENT_OUT_BUFFER != GetSasUriAndCorelationID(STRING_c_str(responseAsString) /*in*/, NULL /*out*/, &sasUriSize /*in,out*/, NULL /*out*/, &corelationIdSize /*in,out*/))
+                                        {
+                                            LogError("unable to construct sas url");
+                                            result = __FAILURE__;
+                                        }
+                                        else
+                                        {
+                                            char* sasUriTemp = (char*)malloc(sasUriSize);
+                                            char* correlationIdTemp = (char*)malloc(corelationIdSize);
+
+                                            if (SUCCESS != GetSasUriAndCorelationID(STRING_c_str(responseAsString) /*in*/, sasUriTemp /*out*/, &sasUriSize /*in, out*/, correlationIdTemp, &corelationIdSize))
+                                            {
+                                                LogError("unable to construct sas url or corelation id");
+                                                result = __FAILURE__;
+                                            }
+                                            else if (STRING_copy(sasUri, sasUriTemp) != 0)
+                                            {
+                                                /*Codes_SRS_IOTHUBCLIENT_LL_02_082: [ If extracting and saving the correlationId or SasUri fails then IoTHubClient_LL_UploadToBlob shall fail and return IOTHUB_CLIENT_ERROR. ]*/
+                                                LogError("unable to STRING_copy");
+                                                result = __FAILURE__;
+                                            }
+                                            else if (STRING_copy(correlationId, correlationIdTemp) != 0)
+                                            {
+                                                /*Codes_SRS_IOTHUBCLIENT_LL_02_082: [ If extracting and saving the correlationId or SasUri fails then IoTHubClient_LL_UploadToBlob shall fail and return IOTHUB_CLIENT_ERROR. ]*/
+                                                LogError("unable to STRING_copy");
+                                                result = __FAILURE__;
+                                            }
+                                            else
+                                            {
+                                                result = 0;
+                                            }
+
+                                            free(sasUriTemp);
+                                            free(correlationIdTemp);
+                                        }
+
+                                        // Original code using parson.*. We are leaving it here to identify future changes and re-doing them in WinParson.cpp.
+#if 0
                                         /*Codes_SRS_IOTHUBCLIENT_LL_02_081: [ Otherwise, IoTHubClient_LL_UploadMultipleBlocksToBlob(Ex) shall use parson to extract and save the following information from the response buffer: correlationID and SasUri. ]*/
                                         JSON_Value* allJson = json_parse_string(STRING_c_str(responseAsString));
                                         if (allJson == NULL)
@@ -571,6 +611,7 @@ static int IoTHubClient_LL_UploadToBlob_step1and2(IOTHUB_CLIENT_LL_UPLOADTOBLOB_
                                             json_value_free(allJson);
                                         }
                                         STRING_delete(responseAsString);
+#endif
                                     }
                                 }
                             }
@@ -974,7 +1015,7 @@ IOTHUB_CLIENT_RESULT IoTHubClient_LL_UploadMultipleBlocksToBlob_Impl(IOTHUB_CLIE
                                             {
                                                 /*must make a json*/
 
-                                                int requiredStringLength = snprintf(NULL, 0, "{\"isSuccess\":%s, \"statusCode\":%d, \"statusDescription\":\"%s\"}", ((httpResponse < 300) ? "true" : "false"), httpResponse, BUFFER_u_char(responseToIoTHub));
+                                                int requiredStringLength = _scprintf("{\"isSuccess\":%s, \"statusCode\":%d, \"statusDescription\":\"%s\"}", ((httpResponse < 300) ? "true" : "false"), httpResponse, BUFFER_u_char(responseToIoTHub));
 
                                                 char * requiredString = malloc(requiredStringLength + 1);
                                                 if (requiredString == 0)
@@ -986,7 +1027,7 @@ IOTHUB_CLIENT_RESULT IoTHubClient_LL_UploadMultipleBlocksToBlob_Impl(IOTHUB_CLIE
                                                 {
                                                     /*do again snprintf*/
                                                     BUFFER_HANDLE toBeTransmitted = NULL;
-                                                    (void)snprintf(requiredString, requiredStringLength + 1, "{\"isSuccess\":%s, \"statusCode\":%d, \"statusDescription\":\"%s\"}", ((httpResponse < 300) ? "true" : "false"), httpResponse, BUFFER_u_char(responseToIoTHub));
+                                                    (void)_snprintf_s(requiredString, requiredStringLength + 1, _TRUNCATE, "{\"isSuccess\":%s, \"statusCode\":%d, \"statusDescription\":\"%s\"}", ((httpResponse < 300) ? "true" : "false"), httpResponse, BUFFER_u_char(responseToIoTHub));
                                                     toBeTransmitted = BUFFER_create((const unsigned char*)requiredString, requiredStringLength);
                                                     if (toBeTransmitted == NULL)
                                                     {

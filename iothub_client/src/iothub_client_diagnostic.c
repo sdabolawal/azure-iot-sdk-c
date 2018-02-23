@@ -17,7 +17,7 @@ static const int BASE_36 = 36;
 
 #define INDEFINITE_TIME ((time_t)-1)
 
-static char* get_epoch_time(char* timeBuffer)
+static char* get_epoch_time(char* timeBuffer, size_t timeBufferSize)
 {
     char* result;
     time_t epochTime;
@@ -31,7 +31,7 @@ static char* get_epoch_time(char* timeBuffer)
 	else if (timeLen == sizeof(int64_t))
 	{
         long long llTime = (long long)epochTime;
-        if (sprintf(timeBuffer, "%lld", llTime) < 0)
+        if (sprintf_s(timeBuffer, timeBufferSize, "%lld", llTime) < 0)
         {
             LogError("Failed sprintf to timeBuffer with 8 bytes of time_t");
             result = NULL;
@@ -43,7 +43,7 @@ static char* get_epoch_time(char* timeBuffer)
 	}
 	else if (timeLen == sizeof(int32_t))
 	{
-        if (sprintf(timeBuffer, "%d", (int32_t)epochTime) < 0)
+        if (sprintf_s(timeBuffer, timeBufferSize, "%d", (int32_t)epochTime) < 0)
         {
             LogError("Failed sprintf to timeBuffer with 4 bytes of time_t");
             result = NULL;
@@ -136,7 +136,7 @@ static IOTHUB_MESSAGE_DIAGNOSTIC_PROPERTY_DATA* prepare_message_diagnostic_data(
                 free(result);
                 result = NULL;
             }
-            else if (get_epoch_time(timeBuffer) == NULL)
+            else if (get_epoch_time(timeBuffer, TIME_STRING_BUFFER_LEN) == NULL)
             {
                 LogError("Failed getting current time");
                 free(result->diagnosticId);

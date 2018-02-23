@@ -330,7 +330,8 @@ static IOTHUB_CLIENT_LL_HANDLE_DATA* initialize_iothub_client(const IOTHUB_CLIEN
                         {
                             size_t suffix_len = strlen(whereIsDot);
                             /*Codes_SRS_IOTHUBCLIENT_LL_02_096: [ IoTHubClient_LL_CreateWithTransport shall create the data structures needed to instantiate a IOTHUB_CLIENT_LL_UPLOADTOBLOB_HANDLE. ]*/
-                            IoTHubName = (char*)malloc(whereIsDot - hostname + 1);
+                            size_t iotHubName_len = whereIsDot - hostname + 1;
+                            IoTHubName = (char*)malloc(iotHubName_len);
                             if (IoTHubName == NULL)
                             {
                                 /*Codes_SRS_IOTHUBCLIENT_LL_02_097: [ If creating the data structures fails or instantiating the IOTHUB_CLIENT_LL_UPLOADTOBLOB_HANDLE fails then IoTHubClient_LL_CreateWithTransport shall fail and return NULL. ]*/
@@ -352,8 +353,8 @@ static IOTHUB_CLIENT_LL_HANDLE_DATA* initialize_iothub_client(const IOTHUB_CLIEN
                             else
                             {
                                 memset(IoTHubName, 0, whereIsDot - hostname + 1);
-                                (void)strncpy(IoTHubName, hostname, whereIsDot - hostname);
-                                (void)strcpy(IoTHubSuffix, whereIsDot+1);
+                                (void)strncpy_s(IoTHubName, iotHubName_len, hostname, whereIsDot - hostname);
+                                (void)strcpy_s(IoTHubSuffix, suffix_len + 1, whereIsDot + 1);
 
                                 actual_config.deviceId = device_config->deviceId;
                                 actual_config.deviceKey = device_config->deviceKey;

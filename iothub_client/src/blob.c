@@ -35,7 +35,7 @@ BLOB_RESULT Blob_UploadBlock(
     else
     {
         char temp[7]; /*this will contain 000000... 049999*/
-        if (sprintf(temp, "%6u", (unsigned int)blockID) != 6) /*produces 000000... 049999*/
+        if (sprintf_s(temp, 7, "%6u", (unsigned int)blockID) != 6) /*produces 000000... 049999*/
         {
             /*Codes_SRS_BLOB_02_033: [ If any previous operation that doesn't have an explicit failure description fails then Blob_UploadMultipleBlocksFromSasUri shall fail and return BLOB_ERROR ]*/
             LogError("failed to sprintf");

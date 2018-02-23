@@ -359,14 +359,15 @@ static char* generate_twin_correlation_id()
 	}
 	else
 	{
-		if ((result = (char*)malloc(strlen(TWIN_CORRELATION_ID_PROPERTY_FORMAT) + strlen(unique_id) + 1)) == NULL)
+		size_t resultSize = strlen(TWIN_CORRELATION_ID_PROPERTY_FORMAT) + strlen(unique_id) + 1;
+		if ((result = (char*)malloc(resultSize)) == NULL)
 		{
 			LogError("Failed allocating correlation-id");
 			result = NULL;
 		}
 		else
 		{
-			(void)sprintf(result, TWIN_CORRELATION_ID_PROPERTY_FORMAT, unique_id);
+			(void)sprintf_s(result, resultSize, TWIN_CORRELATION_ID_PROPERTY_FORMAT, unique_id);
 		}
 
 		free(unique_id);
